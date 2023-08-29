@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:travel_book/travel_sql.dart';
+import 'package:travel_book/travel_data.dart';
 
 class travelList extends StatefulWidget {
   @override
@@ -14,6 +16,14 @@ class MyBehavior extends ScrollBehavior {
 }
 
 class travelListState extends State<travelList> {
+
+  final DatabaseService _databaseService = DatabaseService();
+  Future<List<Travel>> _travelList = DatabaseService()
+      .databaseConfig()
+      .then((_) => DatabaseService().selectTravels());
+  int currentCount = 0;
+
+
   @override
   Widget build(BuildContext context) {
 
@@ -32,40 +42,66 @@ class travelListState extends State<travelList> {
         padding: const EdgeInsets.all(10),
         child: ScrollConfiguration(
           behavior: MyBehavior(),
-          child: ListView(
-            children: [
-              ListTile(
-                leading: new Icon(Icons.photo),
-                title: new Text('Photo'),
-                onTap: () {
-                  print('test');
-                },
-              ),
-              ListTile(
-                leading: new Icon(Icons.music_note),
-                title: new Text('Music'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: new Icon(Icons.videocam),
-                title: new Text('Video'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: new Icon(Icons.share),
-                title: new Text('Share'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+          child: FutureBuilder(
+            future: _travelList,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                currentCount = snapshot.data!.length;
+                if (currentCount == 0) {
+                  return const Center(
+                    child: Text("No data exists."),
+                  );
+                } else {
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      return travelBox(
+                          snapshot.data![index].id,
+                          snapshot.data![index].name);
+                    },
+                  );
+                }
+              } else if (snapshot.hasError) {
+                return const Center(
+                  child: Text("Error."),
+                );
+              } else {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                );
+              }
+            },
+          )
         ),
       ),
     );
   }
+
+  Widget travelBox(int id, String name) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(15),
+          child: Text("$id"),
+        ),
+        Container(
+          padding: const EdgeInsets.all(15),
+          child: Text(name),
+        ),
+        // Expanded(
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.end,
+        //     children: [
+        //       updateButton(id),
+        //       const SizedBox(width: 10),
+        //       deleteButton(id),
+        //     ],
+        //   ),
+        // ),
+      ],
+    );
+  }
+
 }

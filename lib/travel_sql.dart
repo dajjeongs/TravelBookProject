@@ -1,6 +1,7 @@
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:travel_book/test.dart';
+import 'package:travel_book/travel_data.dart';
 
 class DatabaseService {
   static final DatabaseService _database = DatabaseService._internal();
@@ -12,13 +13,14 @@ class DatabaseService {
     databaseConfig();
   }
 
+
   Future<bool> databaseConfig() async {
     try {
       database = openDatabase(
         join(await getDatabasesPath(), 'travel_database.db'),
         onCreate: (db, version) {
           return db.execute(
-            'CREATE TABLE travels(id INTEGER PRIMARY KEY, name TEXT)',
+            'CREATE TABLE travels(id INTEGER PRIMARY KEY, name TEXT, start TEXT, end TEXT)',
           );
         },
         version: 1,
@@ -46,6 +48,13 @@ class DatabaseService {
     }
   }
 
+  Future<int> getDatabaseRowCount() async {
+    final Database db = await database;
+    final List<Map<String, dynamic>> data = await db.query('travels');
+
+    return data.length;
+  }
+
   Future<List<Travel>> selectTravels() async {
     final Database db = await database;
     final List<Map<String, dynamic>> data = await db.query('travels');
@@ -63,14 +72,16 @@ class DatabaseService {
     final List<Map<String, dynamic>> data =
     await db.query('travels', where: "id = ?", whereArgs: [id]);
     return Travel(
-        id: data[0]['id'], name: data[0]['name']);
+        id: data[0]['id'],
+        name: data[0]['name'],
+    );
   }
 
   Future<bool> updateTravel(Travel travel) async {
     final Database db = await database;
     try {
       db.update(
-        'words',
+        'travels',
         travel.toMap(),
         where: "id = ?",
         whereArgs: [travel.id],
