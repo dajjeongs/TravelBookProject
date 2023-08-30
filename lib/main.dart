@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:travel_book/travelPage.dart';
 import 'package:travel_book/travel_list.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:travel_book/travel_sql.dart';
@@ -54,8 +55,7 @@ class _TravelCashBook extends State<TravelCashBook> {
   @override
   Widget build(BuildContext context) {
 
-
-    double height = MediaQuery.of(context).size.height * 0.6;
+    double height = MediaQuery.of(context).size.height * 0.65;
 
     return Scaffold(
       appBar: AppBar(
@@ -123,14 +123,22 @@ class _TravelCashBook extends State<TravelCashBook> {
                                     ),),
                                   );
                                 } else {
-                                  return ListView.builder(
-                                    itemCount: snapshot.data!.length,
-                                    itemBuilder: (context, index) {
+                                  return ListView(
+                                    children: List.generate(snapshot.data!.length, (index) {
                                       return travelBox(
-                                          snapshot.data![index].id,
-                                          snapshot.data![index].name);
-                                      },
+                                        snapshot.data![index].id,
+                                        snapshot.data![index].name,
+                                      );
+                                    }),
                                   );
+                                  // return ListView.builder(
+                                  //   itemCount: snapshot.data!.length,
+                                  //   itemBuilder: (context, index) {
+                                  //     return travelBox(
+                                  //         snapshot.data![index].id,
+                                  //         snapshot.data![index].name);
+                                  //     },
+                                  // );
                                 }
                               } else if (snapshot.hasError) {
                                 return const Center(
@@ -196,41 +204,157 @@ class _TravelCashBook extends State<TravelCashBook> {
   }
 
   Widget travelBox(int id, String name) {
-    return Row(
-      children: [
+    double boxHeight = MediaQuery.of(context).size.height * 0.15;
+    double boxWidth = MediaQuery.of(context).size.width * 0.85;
+
+    return Card(
+      child:
         Container(
-          padding: const EdgeInsets.all(15),
-          child: Text("$id"),
-        ),
-        Container(
-          padding: const EdgeInsets.all(15),
-          child: Text(name),
-        ),
-        Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          height: boxHeight,
+          width: boxWidth,
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10), //모서리를 둥글게
+              border: Border.all(color: Colors.grey, width: 2)
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // updateButton(id),
-              const SizedBox(width: 10),
-              deleteButton(id),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    child: Text("$id",
+                      style: const TextStyle(
+                          fontSize: 15
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        updateButton(id),
+                        deleteButton(id),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context,
+                    MaterialPageRoute(
+                        builder: (context) => travelPage(travel: Travel(id: id, name: name),)
+                    )
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  child: Text(name,
+                    style: const TextStyle(
+                        fontSize: 20
+                    ),),
+                ),
+              ),
+              const SizedBox(
+                height: 10,
+              ),
             ],
           ),
         ),
-      ],
+    );
+  }
+
+  Widget updateButton(int id) {
+    return IconButton(
+        onPressed: () {
+          Future<Travel> travel = _databaseService.selectTravel(id);
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) => updateTravelDialog(travel),
+          );
+        },
+        icon: const Icon(Icons.edit),
+        color: Colors.black45,
+    );
+  }
+
+  Widget updateTravelDialog(Future<Travel> travel) {
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text("여행명 수정"),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(
+              Icons.close,
+            ),
+          ),
+        ],
+      ),
+      content: FutureBuilder(
+          future: travel,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              travelNameView.text = snapshot.data!.name;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: travelNameView,
+                    decoration: const InputDecoration(hintText: "변경할 여행명을 입력해주세요."),
+                  ),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: () {
+                      _databaseService
+                          .updateTravel(Travel(
+                          id: snapshot.data!.id,
+                          name: travelNameView.text))
+                          .then(
+                            (result) {
+                          if (result) {
+                            Navigator.of(context).pop();
+                            setState(() {
+                              _travelList = _databaseService.selectTravels();
+                            });
+                          } else {
+                            print("update error");
+                          }
+                        },
+                      );
+                    },
+                    child: const Text("수정"),
+                  ),
+                ],
+              );
+            } else if (snapshot.hasError) {
+              return const Center(
+                child: Text("Error occurred!"),
+              );
+            } else {
+              return const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              );
+            }
+          }),
     );
   }
 
   Widget deleteButton(int id) {
-    return ElevatedButton(
+    return IconButton(
         onPressed: () => showDialog(
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) => deleteWordDialog(id),
         ),
-        style: ButtonStyle(
-          backgroundColor: MaterialStateProperty.all(Colors.redAccent[100]),
-        ),
-        child: const Icon(Icons.delete));
+        icon: const Icon(Icons.delete),
+        color: Colors.black45,
+    );
   }
 
   Widget deleteWordDialog(int id) {
@@ -499,7 +623,6 @@ class _TravelCashBook extends State<TravelCashBook> {
                       ElevatedButton(
                         onPressed: () async {
                           int count = await _databaseService.getDatabaseRowCount();
-                          print('object');
                           print(count);
                           _databaseService
                               .insertTravel(
@@ -519,6 +642,7 @@ class _TravelCashBook extends State<TravelCashBook> {
                               }
                             },
                           );
+                          travelNameView.clear();
                         },
                         child: const Text("생성"),
                         style: ElevatedButton.styleFrom(
